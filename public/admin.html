@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Glamora Admin</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8E%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <!-- Login -->
+  <section class="login" id="loginView" hidden>
+    <form class="login-card" id="loginForm">
+      <div class="brand">Glamora<span>✦</span></div>
+      <p class="login-sub">Admin Panel</p>
+      <p class="error" id="loginError"></p>
+      <label>Username<input name="username" required autocomplete="username"></label>
+      <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
+      <button class="btn btn-primary btn-block" type="submit">Log In</button>
+      <a href="/" class="back-link">← Back to store</a>
+    </form>
+  </section>
+
+  <!-- App -->
+  <div class="app" id="appView" hidden>
+    <aside class="sidebar">
+      <div class="brand">Glamora<span>✦</span><small>Admin</small></div>
+      <nav class="side-nav">
+        <button data-view="dashboard" class="active"><span>📊</span>Dashboard</button>
+        <button data-view="products"><span>💍</span>Products</button>
+        <button data-view="offers"><span>🎉</span>Offers</button>
+        <button data-view="homepage"><span>✨</span>Homepage</button>
+        <button data-view="orders"><span>📦</span>Orders<i class="pill" id="pendingPill" hidden></i></button>
+        <button data-view="settings"><span>⚙️</span>Settings</button>
+      </nav>
+      <div class="side-foot">
+        <a href="/" target="_blank" rel="noopener">View store ↗</a>
+        <button id="logoutBtn">Log out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="viewTitle">Dashboard</h1>
+          <p id="viewSub">Here's what's happening in your store.</p>
+        </div>
+        <div class="topbar-actions" id="topActions"></div>
+      </header>
+      <div id="view"></div>
+    </main>
+  </div>
+
+  <!-- Product form -->
+  <div class="modal" id="productModal">
+    <div class="backdrop" data-close></div>
+    <form class="modal-card" id="productForm">
+      <div class="modal-head"><h2 id="productFormTitle">Add Product</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
+      <div class="modal-body">
+        <p class="error" id="productError"></p>
+        <div class="img-picker">
+          <div class="img-preview"><img id="imgPreview" alt=""></div>
+          <div class="img-controls">
+            <label class="btn btn-soft btn-sm file-btn">📷 Upload photo<input type="file" name="image" id="imgFile" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
+            <input name="imageUrl" id="imgUrl" placeholder="…or paste an image URL (https://)">
+            <button type="button" class="link-btn" id="imgRemove">Remove image</button>
+            <small>JPG, PNG or WEBP up to 5 MB. Square photos look best. Without a photo, a colourful illustration is shown.</small>
+          </div>
+        </div>
+        <label>Product name<input name="name" required maxlength="120" placeholder="e.g. Kundan Choker Set"></label>
+        <div class="grid-2">
+          <label>Category<select name="category" id="categorySelect" required></select></label>
+          <label>Badge<select name="badge" id="badgeSelect"></select></label>
+        </div>
+        <div class="grid-3">
+          <label>Selling price (₹)<input name="price" type="number" min="1" step="1" required></label>
+          <label>MRP (₹)<input name="mrp" type="number" min="0" step="1" placeholder="Optional"></label>
+          <label>Stock qty<input name="stock" type="number" min="0" step="1" required value="10"></label>
+        </div>
+        <label>Description<textarea name="description" rows="3" maxlength="1000" placeholder="Material, finish, size, occasion…"></textarea></label>
+        <div>
+          <div class="field-label">Highlights <small class="muted" id="hlCount">(pick up to 6, shown as badges on the store)</small></div>
+          <div class="hl-picker" id="hlPicker"></div>
+        </div>
+        <details class="spec-fields">
+          <summary>Specifications <small class="muted">(optional, only filled rows are shown)</small></summary>
+          <div class="grid-2" id="specFields"></div>
+        </details>
+        <label class="toggle"><input type="checkbox" name="available" checked><span class="sw"></span>Available for sale</label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+        <button type="submit" class="btn btn-primary" id="productSave">Save Product</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Offer form -->
+  <div class="modal" id="offerModal">
+    <div class="backdrop" data-close></div>
+    <form class="modal-card" id="offerForm">
+      <div class="modal-head"><h2 id="offerFormTitle">New Offer</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
+      <div class="modal-body">
+        <p class="error" id="offerError"></p>
+        <div class="offer-preview" id="offerPreview"></div>
+        <label>Offer title<input name="title" required maxlength="80" placeholder="e.g. Diwali Dhamaka"></label>
+        <label>Subtitle<input name="subtitle" maxlength="160" placeholder="e.g. Flat discount on all earrings"></label>
+        <div class="grid-3">
+          <label>Discount (%)<input name="discount" type="number" min="1" max="90" required value="10"></label>
+          <label>Applies to<select name="category" id="offerCategory"></select></label>
+          <label>Ends on<input name="endsAt" type="date"></label>
+        </div>
+        <div class="field-label">Card colour</div>
+        <div class="themes" id="themePicker"></div>
+        <label class="toggle"><input type="checkbox" name="active" checked><span class="sw"></span>Offer is active</label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Offer</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Confirm -->
+  <div class="modal" id="confirmModal">
+    <div class="backdrop" data-close></div>
+    <div class="modal-card confirm-card">
+      <div class="confirm-icon">🗑️</div>
+      <h2 id="confirmTitle">Are you sure?</h2>
+      <p id="confirmText"></p>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-close>Cancel</button>
+        <button class="btn btn-danger" id="confirmOk">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="/js/art.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

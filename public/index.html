@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Glamora Jewels | Artificial Jewellery That Sparkles</title>
+  <meta name="description" content="Shop kundan, oxidised, pearl and American diamond artificial jewellery. Necklaces, jhumkas, rings, bangles and bridal sets.">
+  <meta name="theme-color" content="#3A2115">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8E%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Offer ticker -->
+  <div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="container header-inner">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+      </button>
+
+      <a href="#home" class="logo">Glamora<span class="logo-spark">✦</span><small>JEWELS</small></a>
+
+      <nav class="nav" id="nav">
+        <div class="nav-head">
+          <span class="logo">Glamora<span class="logo-spark">✦</span></span>
+          <button class="icon-btn" data-close-nav aria-label="Close menu"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <a href="#home">Home</a>
+        <a href="#collections">Collections</a>
+        <a href="#offers">Offers</a>
+        <a href="#shop">Shop</a>
+        <a href="#about">Why Us</a>
+        <div class="nav-auth" id="navAuth"></div>
+      </nav>
+
+      <div class="header-actions">
+        <button class="icon-btn" id="searchBtn" aria-label="Search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        </button>
+        <button class="icon-btn" id="wishBtn" aria-label="Wishlist">
+          <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 6a5 5 0 0 1 9.2 5C19 15.6 12 20 12 20z"/></svg>
+          <span class="count" id="wishCount">0</span>
+        </button>
+        <button class="icon-btn" id="cartBtn" aria-label="Shopping bag">
+          <svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+          <span class="count" id="cartCount">0</span>
+        </button>
+        <div class="auth-area" id="authArea"></div>
+      </div>
+    </div>
+
+    <div class="search-bar" id="searchBar">
+      <div class="container">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" id="searchInput" placeholder="Search necklaces, jhumkas, rings…" autocomplete="off">
+      </div>
+    </div>
+  </header>
+  <div class="nav-overlay" data-close-nav></div>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero" id="home">
+      <div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div>
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <span class="eyebrow">✦ The Festive Edit is here</span>
+          <h1>Jewellery that <em>sparkles</em> with every mood</h1>
+          <p>Kundan, oxidised, pearl and American diamond pieces that look luxe and don't cost much. Light on the skin and made to wear every day.</p>
+          <div class="hero-cta">
+            <a href="#shop" class="btn btn-primary btn-lg">Shop the Collection</a>
+            <a href="#offers" class="btn btn-outline btn-lg">View Offers</a>
+          </div>
+          <ul class="hero-points">
+            <li><span>✦</span> Anti-tarnish finish</li>
+            <li><span>✦</span> Skin-friendly</li>
+            <li><span>✦</span> Cash on Delivery</li>
+          </ul>
+        </div>
+        <div class="hero-art" id="heroArt"></div>
+      </div>
+    </section>
+
+    <!-- Categories -->
+    <section class="section" id="collections">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow" id="catEyebrow">Shop by category</span>
+          <h2 id="catTitle">Find your <em>sparkle</em></h2>
+        </div>
+        <div class="cat-grid" id="catGrid"></div>
+      </div>
+    </section>
+
+    <!-- Offers -->
+    <section class="section section-tint" id="offers">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Limited time</span>
+          <h2>Offers you'll <em>love</em></h2>
+        </div>
+        <div class="offer-grid" id="offerGrid"></div>
+      </div>
+    </section>
+
+    <!-- Shop -->
+    <section class="section" id="shop">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">The collection</span>
+          <h2>Trending <em>right now</em></h2>
+        </div>
+
+        <div class="toolbar">
+          <div class="chips" id="chips"></div>
+          <div class="toolbar-right">
+            <label class="switch-label"><input type="checkbox" id="inStockOnly"><span class="switch"></span>In stock</label>
+            <select id="sortSelect" aria-label="Sort products">
+              <option value="featured">Featured</option>
+              <option value="newest">Newest first</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+              <option value="discount">Biggest discount</option>
+            </select>
+          </div>
+        </div>
+        <p class="result-note" id="resultNote"></p>
+        <div class="product-grid" id="productGrid"></div>
+      </div>
+    </section>
+
+    <!-- Why us -->
+    <section class="section section-tint" id="about">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Why Glamora</span>
+          <h2>Made to <em>shine</em>, made to last</h2>
+        </div>
+        <div class="feature-grid">
+          <div class="feature reveal"><span class="feature-icon fi-1"><svg viewBox="0 0 24 24"><path d="M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z"/></svg></span><h3>Premium Plating</h3><p>Multi-layer gold, rose-gold and rhodium plating with an anti-tarnish coat.</p></div>
+          <div class="feature reveal"><span class="feature-icon fi-2"><svg viewBox="0 0 24 24"><path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19l7-7"/></svg></span><h3>Skin Friendly</h3><p>Nickel-safe, lightweight pieces that are comfortable from morning till late night.</p></div>
+          <div class="feature reveal"><span class="feature-icon fi-3"><svg viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg></span><h3>Free Shipping</h3><p id="shipNote">Free delivery on orders above ₹999. Cash on Delivery available.</p></div>
+          <div class="feature reveal"><span class="feature-icon fi-4"><svg viewBox="0 0 24 24"><path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13"/><path d="M12 7c-2-4-6-3-5 0M12 7c2-4 6-3 5 0"/></svg></span><h3>Gift Ready</h3><p>Every order arrives in a keepsake box, ready to gift.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Banner -->
+    <section class="section">
+      <div class="container">
+        <div class="cta-banner reveal">
+          <div>
+            <span class="eyebrow light">Bridal &amp; Festive</span>
+            <h2>Complete your look with a <em>full set</em></h2>
+            <p>Necklace, earrings and maang tikka matched for you.</p>
+          </div>
+          <div class="cta-side">
+            <img src="/images/categories/sets.jpg" alt="Kundan bridal choker with emerald drops" class="cta-img" loading="lazy">
+            <button class="btn btn-light btn-lg" data-cat="Jewellery Sets">Explore Sets</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <span class="logo">Glamora<span class="logo-spark">✦</span></span>
+        <p>Artificial jewellery for every occasion: festive, bridal and everyday.</p>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <a href="#shop" data-cat="Necklaces">Necklaces</a>
+        <a href="#shop" data-cat="Earrings">Earrings</a>
+        <a href="#shop" data-cat="Bangles">Bangles</a>
+        <a href="#shop" data-cat="Jewellery Sets">Bridal Sets</a>
+      </div>
+      <div>
+        <h4>Help</h4>
+        <a href="#about">Shipping</a>
+        <a href="#about">Jewellery Care</a>
+        <a href="#" id="footerOrders">My Orders</a>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <p>hello@glamorajewels.example<br>+91 00000 00000<br>Mon–Sat, 10am–7pm</p>
+      </div>
+    </div>
+    <div class="container footer-bottom">© <span id="year"></span> Glamora Jewels. All rights reserved. · <a href="/credits" style="display:inline">Photo credits</a></div>
+  </footer>
+
+  <!-- Auth modal -->
+  <div class="modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card auth-card">
+      <button class="icon-btn modal-x" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="auth-hero">
+        <span class="logo">Glamora<span class="logo-spark">✦</span></span>
+        <p id="authTitle">Welcome! Sign in for faster checkout and to track your orders.</p>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="login">Sign In</button>
+        <button class="tab" data-tab="signup">Sign Up</button>
+      </div>
+      <p class="form-error" id="authError"></p>
+      <form id="loginForm" class="form" data-form="login">
+        <label>Email<input type="email" name="email" required autocomplete="email"></label>
+        <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+        <button class="btn btn-primary btn-block" type="submit">Sign In</button>
+        <p class="form-switch">New here? <a href="#" data-tab="signup">Create an account</a></p>
+      </form>
+      <form id="signupForm" class="form" data-form="signup" hidden>
+        <label>Full name<input type="text" name="name" required minlength="2" autocomplete="name"></label>
+        <label>Email<input type="email" name="email" required autocomplete="email"></label>
+        <label>Password<input type="password" name="password" required minlength="6" autocomplete="new-password" placeholder="At least 6 characters"></label>
+        <button class="btn btn-primary btn-block" type="submit">Create Account</button>
+        <p class="form-switch">Already have an account? <a href="#" data-tab="login">Sign in</a></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick view modal -->
+  <div class="modal" id="productModal" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card product-card-lg" id="productModalBody"></div>
+  </div>
+
+  <!-- Orders modal -->
+  <div class="modal" id="ordersModal" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card orders-card">
+      <button class="icon-btn modal-x" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <h3 class="modal-title">My Orders</h3>
+      <div id="ordersBody"></div>
+    </div>
+  </div>
+
+  <!-- Bag / wishlist drawer -->
+  <aside class="drawer" id="drawer" aria-label="Shopping bag">
+    <div class="modal-backdrop" data-close></div>
+    <div class="drawer-panel">
+      <div class="drawer-head">
+        <h3 id="drawerTitle">Your Bag</h3>
+        <button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="drawer-body" id="drawerBody"></div>
+      <div class="drawer-foot" id="drawerFoot"></div>
+    </div>
+  </aside>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="/js/art.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

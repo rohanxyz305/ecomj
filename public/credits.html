@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photo Credits | Glamora Jewels</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .credits { padding: 60px 0 80px; }
+    .credits h1 { color: var(--plum); font-size: clamp(2rem, 4vw, 2.6rem); margin: 14px 0 8px; }
+    .credits > .container > p { color: var(--muted); max-width: 640px; }
+    .credit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; margin-top: 30px; }
+    .credit { display: grid; grid-template-columns: 72px 1fr; gap: 14px; align-items: center; background: #fff; border-radius: var(--radius-sm); padding: 12px; box-shadow: 0 4px 18px -12px rgba(74, 18, 89, .3); font-size: .82rem; }
+    .credit img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; }
+    .credit strong { display: block; color: var(--plum); overflow-wrap: anywhere; }
+    .credit a { color: var(--rose); }
+    .credit span { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a href="/" class="logo">Glamora<span class="logo-spark">✦</span><small>JEWELS</small></a>
+      <a href="/" class="btn btn-outline btn-sm" style="margin-left:auto">← Back to store</a>
+    </div>
+  </header>
+  <main class="credits">
+    <div class="container">
+      <span class="eyebrow">Thank you</span>
+      <h1>Photo credits</h1>
+      <p>Some photos on this site come from Wikimedia Commons and are used under the free licences listed below. Photos marked CC BY or CC BY-SA have been resized for the web.</p>
+      <div class="credit-grid" id="credits"></div>
+    </div>
+  </main>
+  <script>
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const LICENSES = {
+      'CC0': 'https://creativecommons.org/publicdomain/zero/1.0/',
+      'CC BY 2.0': 'https://creativecommons.org/licenses/by/2.0/',
+      'CC BY 4.0': 'https://creativecommons.org/licenses/by/4.0/',
+      'CC BY-SA 2.0': 'https://creativecommons.org/licenses/by-sa/2.0/',
+      'CC BY-SA 3.0': 'https://creativecommons.org/licenses/by-sa/3.0/',
+      'CC BY-SA 3.0 igo': 'https://creativecommons.org/licenses/by-sa/3.0/igo/',
+      'CC BY-SA 4.0': 'https://creativecommons.org/licenses/by-sa/4.0/',
+    };
+    fetch('/images/credits.json').then(r => r.json()).then(list => {
+      document.getElementById('credits').innerHTML = list.map(c => `
+        <div class="credit">
+          <img src="${esc(c.file)}" alt="" loading="lazy">
+          <div>
+            <strong>${esc(c.title)}</strong>
+            <span>by ${esc(c.author)}</span><br>
+            ${LICENSES[c.license] ? `<a href="${LICENSES[c.license]}" target="_blank" rel="noopener">${esc(c.license)}</a>` : esc(c.license)}
+            · <a href="${esc(c.source)}" target="_blank" rel="noopener">Source</a>
+          </div>
+        </div>`).join('');
+    });
+  </script>
+</body>
+</html>
