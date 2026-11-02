@@ -1,0 +1,115 @@
+# Checks the code on every push, then deploys main to shared hosting.
+# Deploying stays off until the repo variable DEPLOY_METHOD is set to "ftp" or "ssh".
+# The server's data/ and public/uploads/ folders (store data, uploaded photos) are never uploaded over or deleted.
+name: Check and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never run two deploys at the same time
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Syntax check
+        run: for f in server.js lib/*.js public/js/*.js; do node --check "$f"; done
+      - name: Start the server and check the store answers
+        run: |
+          node server.js > server.log 2>&1 &
+          for i in $(seq 1 20); do curl -fs http://localhost:3000/api/config > /dev/null && break; sleep 1; done
+          for path in / /admin /api/config /api/products /api/offers; do
+            curl -fs -o /dev/null "http://localhost:3000$path" || { echo "::error::$path failed"; cat server.log; exit 1; }
+          done
+
+  deploy-ftp:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_METHOD == 'ftp'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Passenger (cPanel "Setup Node.js App") restarts the app when this file changes
+      - name: Mark the app for restart
+        run: mkdir -p tmp && date -u > tmp/restart.txt
+      - name: Upload changed files
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          port: ${{ vars.FTP_PORT || 21 }}
+          server-dir: ${{ vars.APP_DIR }}/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            **/node_modules/**
+            data/**
+            public/uploads/**
+      - name: Check the live site
+        if: vars.SITE_URL != ''
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          for i in $(seq 1 12); do curl -fs -o /dev/null "$SITE_URL/api/config" && { echo "Site is up"; exit 0; }; sleep 5; done
+          echo "::error::$SITE_URL did not answer after the deploy"; exit 1
+
+  deploy-ssh:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_METHOD == 'ssh'
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ vars.SSH_PORT || 22 }}
+      APP_DIR: ${{ vars.APP_DIR }}
+      NODE_VENV_ACTIVATE: ${{ vars.NODE_VENV_ACTIVATE }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up the SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+      # No --delete: files the host creates in the app folder (logs, node_modules link) are left alone
+      - name: Upload files
+        run: |
+          rsync -rlz --chmod=D755,F644 -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT" \
+            --exclude '.git/' --exclude '.github/' --exclude 'node_modules' \
+            --exclude 'data/' --exclude 'public/uploads/' --exclude 'tmp/' \
+            ./ "$SSH_USER@$SSH_HOST:$APP_DIR/"
+      - name: Install packages and restart the app
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s <<EOF
+          set -e
+          cd "$APP_DIR"
+          if [ -n "$NODE_VENV_ACTIVATE" ]; then source "$NODE_VENV_ACTIVATE"; fi
+          npm install --omit=dev --no-audit --no-fund
+          mkdir -p tmp && touch tmp/restart.txt
+          EOF
+      - name: Check the live site
+        if: vars.SITE_URL != ''
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          for i in $(seq 1 12); do curl -fs -o /dev/null "$SITE_URL/api/config" && { echo "Site is up"; exit 0; }; sleep 5; done
+          echo "::error::$SITE_URL did not answer after the deploy"; exit 1

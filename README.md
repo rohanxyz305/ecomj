@@ -58,3 +58,27 @@ public/js/art.js   Illustrations shown for products without a photo
 - Set `NODE_ENV=production` (secure cookies over HTTPS), and set `APP_SECRET` to a long random string.
 - Update the contact details in the footer of `public/index.html`.
 - Payments are Cash on Delivery only. Online payment (e.g. Razorpay) can be added to the checkout later.
+
+## Automatic deploys (GitHub Actions)
+
+`.github/workflows/deploy.yml` checks the code on every push. When `DEPLOY_METHOD` is set, each push to `main` is also uploaded to your shared hosting and the app is restarted.
+It never uploads over or deletes `data/` or `public/uploads/` on the server.
+
+Set these in GitHub → repo **Settings → Secrets and variables → Actions**:
+
+| Name | Kind | FTP | SSH | Example |
+|---|---|---|---|---|
+| `DEPLOY_METHOD` | Variable | `ftp` | `ssh` | `ftp` |
+| `APP_DIR` | Variable | ✔ | ✔ | `glamora-jewels` (the Node.js app root, relative to your home folder) |
+| `SITE_URL` | Variable | optional | optional | `https://yourdomain.com` (checked after each deploy) |
+| `FTP_SERVER` | Secret | ✔ | | `ftp.yourdomain.com` |
+| `FTP_USERNAME` | Secret | ✔ | | your cPanel FTP user |
+| `FTP_PASSWORD` | Secret | ✔ | | |
+| `FTP_PROTOCOL` / `FTP_PORT` | Variable | optional | | default `ftps` / `21` |
+| `SSH_HOST` | Secret | | ✔ | `yourdomain.com` or the server IP |
+| `SSH_USER` | Secret | | ✔ | your cPanel username |
+| `SSH_PRIVATE_KEY` | Secret | | ✔ | private key whose public key is authorised in cPanel → SSH Access |
+| `SSH_PORT` | Variable | | optional | default `22` |
+| `NODE_VENV_ACTIVATE` | Variable | | optional | `/home/USER/nodevenv/glamora-jewels/20/bin/activate` (shown at the top of the app in cPanel → Setup Node.js App) |
+
+With FTP, packages aren't installed on the server: click **Run NPM Install** in cPanel → Setup Node.js App after the first deploy and whenever `package.json` changes.
