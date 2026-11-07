@@ -6,13 +6,17 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "import-data": "node --env-file=.env.local scripts/import-data.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
+    "@upstash/redis": "^1.41.0",
+    "@vercel/blob": "^2.8.2",
     "express": "^4.22.3",
     "multer": "^2.5.0"
-  }
+  },
+  "type": "commonjs"
 }

@@ -7,18 +7,19 @@ const db = require('./lib/db');
 const auth = require('./lib/auth');
 const blog = require('./lib/blog');
 const pages = require('./lib/pages');
+const files = require('./lib/files');
 const {
   CATEGORIES, CATEGORY_IMAGES, CATEGORY_SECTION, BADGES, SHIPPING, OFFER_THEMES,
   HIGHLIGHT_OPTIONS, CATEGORY_HIGHLIGHTS, SPEC_FIELDS, seed,
 } = require('./lib/seed');
 
-seed();
+// JSON-file mode creates the admin account and sample data at startup;
+// Redis mode (Vercel) does it on the first request, see db.middleware below
+if (!db.USE_REDIS) seed();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const UPLOAD_DIR = path.join(PUBLIC_DIR, 'uploads');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const ORDER_STATUSES = ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'];
 const IMAGE_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif', 'image/avif': '.avif' };
@@ -41,9 +42,21 @@ const ORDER_FLOW = {
 const MAX_PRICE = 10000000; // ₹1 crore
 const MAX_STOCK = 100000;
 
-/* ---------------- Rate limiting (in memory, single process) ---------------- */
+/* ---------------- Rate limiting (in memory locally, in Redis on Vercel) ---------------- */
 
+// All methods return promises; call them with await
 function limiter({ windowMs, max }) {
+  if (db.USE_REDIS) {
+    const k = key => `${db.PREFIX}rl:${key}`;
+    return {
+      blocked: async key => Number(await db.client().get(k(key)) || 0) >= max,
+      hit: async key => {
+        const n = await db.client().incr(k(key));
+        if (n === 1) await db.client().pexpire(k(key), windowMs);
+      },
+      clear: async key => { await db.client().del(k(key)); },
+    };
+  }
   const hits = new Map();
   setInterval(() => {
     const now = Date.now();
@@ -71,7 +84,7 @@ const log = (...args) => console.log(new Date().toISOString(), ...args);
 
 app.disable('x-powered-by');
 // Behind cPanel/Passenger the proxy connects from loopback; this makes req.ip and req.secure correct
-app.set('trust proxy', process.env.TRUST_PROXY || 'loopback');
+app.set('trust proxy', process.env.TRUST_PROXY || (process.env.VERCEL ? true : 'loopback'));
 app.use((req, res, next) => {
   res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'SAMEORIGIN', 'Referrer-Policy': 'same-origin' });
   next();
@@ -90,23 +103,22 @@ app.use('/api', (req, res, next) => {
   log('Blocked cross-site request', req.method, req.originalUrl, 'from', origin);
   res.status(403).json({ error: 'Request blocked: it did not come from this site' });
 });
-app.use(express.static(PUBLIC_DIR, { extensions: ['html'] })); // "/admin" serves admin.html
+app.use(express.static(PUBLIC_DIR, { extensions: ['html'] })); // "/admin" serves admin.html (on Vercel the CDN serves public/)
+app.use(db.middleware({ onMissing: seed, core: ['admin', 'products', 'offers', 'users', 'orders'] }));
 
+// Vercel limits request bodies to 4.5 MB, so photos there are capped at 4 MB
+const MAX_UPLOAD_MB = process.env.VERCEL ? 4 : 5;
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: UPLOAD_DIR,
-    filename: (req, file, cb) => cb(null, `${Date.now()}-${db.newId()}${IMAGE_TYPES[file.mimetype]}`), // type checked in fileFilter
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024 },
   fileFilter: (req, file, cb) =>
     Object.hasOwn(IMAGE_TYPES, file.mimetype) ? cb(null, true) : cb(fail(400, 'Please upload a JPG, PNG, WEBP, GIF or AVIF image')),
 });
 
 // The browser-declared type can be faked, so check the file's first bytes too
-function looksLikeImage(filePath, mimetype) {
+function looksLikeImage(buffer, mimetype) {
   const head = Buffer.alloc(32);
-  const fd = fs.openSync(filePath, 'r');
-  try { fs.readSync(fd, head, 0, 32, 0); } finally { fs.closeSync(fd); }
+  buffer.copy(head, 0, 0, Math.min(32, buffer.length));
   const ascii = (from, to) => head.toString('latin1', from, to);
   switch (mimetype) {
     case 'image/jpeg': return head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
@@ -117,15 +129,28 @@ function looksLikeImage(filePath, mimetype) {
     default: return false;
   }
 }
-function checkUploads(files) {
-  for (const f of files) {
-    if (!looksLikeImage(f.path, f.mimetype)) throw fail(400, `"${String(f.originalname).slice(0, 60)}" is not a valid image file`);
+// Runs after multer: checks every uploaded file, then saves it and sets file.url
+const storeUploads = wrap(async (req, res, next) => {
+  const all = [...(req.file ? [req.file] : []), ...Object.values(req.files || {}).flat()];
+  for (const f of all) {
+    if (!looksLikeImage(f.buffer, f.mimetype)) throw fail(400, `"${String(f.originalname).slice(0, 60)}" is not a valid image file`);
   }
-}
+  const saved = [];
+  try {
+    for (const f of all) {
+      f.url = await files.save(f.buffer, IMAGE_TYPES[f.mimetype], f.mimetype);
+      saved.push(f.url);
+      f.buffer = null;
+    }
+  } catch (err) {
+    saved.forEach(files.remove);
+    throw err;
+  }
+  next();
+});
 
-function removeUpload(image) {
-  if (image && image.startsWith('/uploads/')) fs.unlink(path.join(UPLOAD_DIR, path.basename(image)), () => {});
-}
+const removeUpload = image => files.remove(image);
+const uploadImage = [upload.single('image'), db.rebind, storeUploads];
 
 /* ---------------- Pricing ---------------- */
 
@@ -225,7 +250,7 @@ app.get('/api/offers', (req, res) => res.json({ offers: db.read('offers').filter
 
 app.post('/api/auth/signup', wrap(async (req, res) => {
   const ipKey = `signup:${req.ip}`;
-  if (signupLimiter.blocked(ipKey)) throw fail(429, 'Too many new accounts from this network. Please try again later.');
+  if (await signupLimiter.blocked(ipKey)) throw fail(429, 'Too many new accounts from this network. Please try again later.');
   const name = String(req.body.name || '').trim().slice(0, 60);
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
@@ -241,7 +266,7 @@ app.post('/api/auth/signup', wrap(async (req, res) => {
   const user = { id: db.newId(), name, email, password: hash, sv: 0, createdAt: new Date().toISOString() };
   users.push(user);
   db.write('users', users);
-  signupLimiter.hit(ipKey);
+  await signupLimiter.hit(ipKey);
 
   startSession(req, res, USER_COOKIE, { id: user.id, role: 'customer', sv: 0 });
   res.status(201).json({ user: publicUser(user) });
@@ -251,17 +276,17 @@ app.post('/api/auth/login', wrap(async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase().slice(0, 200);
   const ipKey = `login:${req.ip}`;
   const acctKey = `login:${email}`;
-  if (loginLimiter.blocked(ipKey) || loginLimiter.blocked(acctKey)) throw tooMany();
+  if (await loginLimiter.blocked(ipKey) || await loginLimiter.blocked(acctKey)) throw tooMany();
 
   const found = db.read('users').find(u => u.email === email);
   // Always run the hash, even for unknown emails, so timing doesn't reveal who has an account
   const ok = await auth.verifyPassword(String(req.body.password || ''), found ? found.password : DUMMY_HASH);
   if (!found || !ok) {
-    loginLimiter.hit(ipKey);
-    loginLimiter.hit(acctKey);
+    await loginLimiter.hit(ipKey);
+    await loginLimiter.hit(acctKey);
     throw fail(401, 'Incorrect email or password');
   }
-  loginLimiter.clear(acctKey);
+  await loginLimiter.clear(acctKey);
   const user = db.read('users').find(u => u.id === found.id) || found;
   startSession(req, res, USER_COOKIE, { id: user.id, role: 'customer', sv: user.sv || 0 });
   res.json({ user: publicUser(user) });
@@ -347,24 +372,23 @@ app.get('/api/orders/mine', requireCustomer, (req, res) => {
 /* ---------------- Admin: auth ---------------- */
 
 const DEFAULT_ADMIN_PASSWORD = 'admin@123';
-let adminUsesDefaultPassword = auth.verifyPasswordSync(DEFAULT_ADMIN_PASSWORD, db.read('admin', null)?.password);
-if (adminUsesDefaultPassword) {
+if (!db.USE_REDIS && auth.verifyPasswordSync(DEFAULT_ADMIN_PASSWORD, db.read('admin', null)?.password)) {
   console.warn('\n  WARNING: the admin password is still the default "admin@123".');
   console.warn('  Anyone can log in to /admin. Change it now in Admin > Settings.\n');
 }
 
 app.post('/api/admin/login', wrap(async (req, res) => {
   const ipKey = `admin-login:${req.ip}`;
-  if (loginLimiter.blocked(ipKey)) throw tooMany();
+  if (await loginLimiter.blocked(ipKey)) throw tooMany();
   const admin = db.read('admin', null);
   const username = String(req.body.username || '').trim();
   const pwOk = await auth.verifyPassword(String(req.body.password || ''), admin.password);
   if (!(username === admin.username && pwOk)) {
-    loginLimiter.hit(ipKey);
+    await loginLimiter.hit(ipKey);
     log('Failed admin login from', req.ip);
     throw fail(401, 'Incorrect username or password');
   }
-  loginLimiter.clear(ipKey);
+  await loginLimiter.clear(ipKey);
   log('Admin logged in from', req.ip);
   startSession(req, res, ADMIN_COOKIE, { role: 'admin', v: admin.version }, ADMIN_SESSION_MS);
   res.json({ username: admin.username });
@@ -383,16 +407,17 @@ app.post('/api/admin/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/admin/me', requireAdmin, (req, res) => {
-  res.json({ username: db.read('admin', null).username, defaultPassword: adminUsesDefaultPassword });
-});
+app.get('/api/admin/me', requireAdmin, wrap(async (req, res) => {
+  const admin = db.read('admin', null);
+  res.json({ username: admin.username, defaultPassword: await auth.verifyPassword(DEFAULT_ADMIN_PASSWORD, admin.password) });
+}));
 
 app.post('/api/admin/password', requireAdmin, wrap(async (req, res) => {
   const ipKey = `admin-pw:${req.ip}`;
-  if (loginLimiter.blocked(ipKey)) throw tooMany();
+  if (await loginLimiter.blocked(ipKey)) throw tooMany();
   const admin = db.read('admin', null);
   if (!(await auth.verifyPassword(String(req.body.current || ''), admin.password))) {
-    loginLimiter.hit(ipKey);
+    await loginLimiter.hit(ipKey);
     throw fail(400, 'Current password is incorrect');
   }
   const next = String(req.body.next || '');
@@ -404,7 +429,6 @@ app.post('/api/admin/password', requireAdmin, wrap(async (req, res) => {
   fresh.password = hash;
   fresh.version += 1;
   db.write('admin', fresh);
-  adminUsesDefaultPassword = false;
   log('Admin password changed from', req.ip);
   startSession(req, res, ADMIN_COOKIE, { role: 'admin', v: fresh.version }, ADMIN_SESSION_MS);
   res.json({ ok: true });
@@ -468,7 +492,7 @@ function readProduct(body) {
 
 // Uploaded file wins, then a pasted URL, then "remove", otherwise keep the current image
 function resolveImage(req, current = '') {
-  if (req.file) return `/uploads/${req.file.filename}`;
+  if (req.file) return req.file.url;
   const url = String(req.body.imageUrl || '').trim();
   if (url) {
     if (!/^https?:\/\//i.test(url)) throw fail(400, 'Image URL must start with http:// or https://');
@@ -479,26 +503,24 @@ function resolveImage(req, current = '') {
 
 app.get('/api/admin/products', requireAdmin, (req, res) => res.json({ products: withPricing(db.read('products')) }));
 
-app.post('/api/admin/products', requireAdmin, upload.single('image'), (req, res) => {
+app.post('/api/admin/products', requireAdmin, uploadImage, (req, res) => {
   try {
-    checkUploads(req.file ? [req.file] : []);
     const products = db.read('products');
     const product = { id: db.newId(), ...readProduct(req.body), image: resolveImage(req), createdAt: new Date().toISOString() };
     products.unshift(product);
     db.write('products', products);
     res.status(201).json({ product });
   } catch (err) {
-    if (req.file) removeUpload(`/uploads/${req.file.filename}`);
+    if (req.file) removeUpload(req.file.url);
     throw err;
   }
 });
 
-app.put('/api/admin/products/:id', requireAdmin, upload.single('image'), (req, res) => {
+app.put('/api/admin/products/:id', requireAdmin, uploadImage, (req, res) => {
   try {
     const products = db.read('products');
     const i = products.findIndex(p => p.id === req.params.id);
     if (i < 0) throw fail(404, 'Product not found');
-    checkUploads(req.file ? [req.file] : []);
     const old = products[i];
     const fields = readProduct(req.body);
     // The form sends the stock it was opened with. If the admin didn't change it, keep the live
@@ -516,7 +538,7 @@ app.put('/api/admin/products/:id', requireAdmin, upload.single('image'), (req, r
     if (image !== old.image) removeUpload(old.image);
     res.json({ product: products[i] });
   } catch (err) {
-    if (req.file) removeUpload(`/uploads/${req.file.filename}`);
+    if (req.file) removeUpload(req.file.url);
     throw err;
   }
 });
@@ -597,14 +619,13 @@ app.delete('/api/admin/offers/:id', requireAdmin, (req, res) => {
 /* ---------------- Admin: homepage category section ---------------- */
 
 // One optional photo per category, sent as photo_<index in CATEGORIES>
-const sectionPhotos = upload.fields(CATEGORIES.map((c, i) => ({ name: `photo_${i}`, maxCount: 1 })));
+const sectionPhotos = [upload.fields(CATEGORIES.map((c, i) => ({ name: `photo_${i}`, maxCount: 1 }))), db.rebind, storeUploads];
 
 app.get('/api/admin/category-section', requireAdmin, (req, res) => res.json({ section: categorySection() }));
 
 app.put('/api/admin/category-section', requireAdmin, sectionPhotos, (req, res) => {
   const files = Object.values(req.files || {}).flat();
   try {
-    checkUploads(files);
     let sent;
     try { sent = JSON.parse(req.body.tiles || '[]'); } catch { sent = null; }
     if (!Array.isArray(sent)) throw fail(400, 'Invalid category list');
@@ -619,7 +640,7 @@ app.put('/api/admin/category-section', requireAdmin, sectionPhotos, (req, res) =
         category: old.category,
         label: String(t.label || '').trim().slice(0, 40),
         // New photo wins, then "use default photo", otherwise keep the current one
-        image: file ? `/uploads/${file.filename}` : t.reset === true ? '' : old.image,
+        image: file ? file.url : t.reset === true ? '' : old.image,
         visible: t.visible !== false,
       });
     }
@@ -638,10 +659,10 @@ app.put('/api/admin/category-section', requireAdmin, sectionPhotos, (req, res) =
     // Delete replaced photos, and any upload that didn't match a category
     const kept = new Set(tiles.map(t => t.image));
     for (const old of current.tiles) if (!kept.has(old.image)) removeUpload(old.image);
-    for (const f of files) if (!kept.has(`/uploads/${f.filename}`)) removeUpload(`/uploads/${f.filename}`);
+    for (const f of files) if (!kept.has(f.url)) removeUpload(f.url);
     res.json({ section: categorySection() });
   } catch (err) {
-    files.forEach(f => removeUpload(`/uploads/${f.filename}`));
+    files.forEach(f => removeUpload(f.url));
     throw err;
   }
 });
@@ -708,14 +729,14 @@ app.put('/api/admin/business', requireAdmin, (req, res) => {
 
 /* ---------------- Newsletter ---------------- */
 
-app.post('/api/newsletter', (req, res) => {
+app.post('/api/newsletter', wrap(async (req, res) => {
   // Hidden "website" field: real people leave it empty, bots fill it in
   if (String(req.body.website || '').trim()) return res.status(201).json({ ok: true });
   const ipKey = `newsletter:${req.ip}`;
-  if (newsletterLimiter.blocked(ipKey)) throw fail(429, 'Too many signups from this network. Please try again later.');
+  if (await newsletterLimiter.blocked(ipKey)) throw fail(429, 'Too many signups from this network. Please try again later.');
   const email = String(req.body.email || '').trim().toLowerCase();
   if (email.length > 200 || !EMAIL_RE.test(email)) throw fail(400, 'Please enter a valid email address');
-  newsletterLimiter.hit(ipKey);
+  await newsletterLimiter.hit(ipKey);
   const subs = db.read('subscribers');
   // Same reply whether or not the email was already on the list, so the form can't be used to check who subscribed
   if (!subs.some(s => s.email === email)) {
@@ -724,7 +745,7 @@ app.post('/api/newsletter', (req, res) => {
     log('Newsletter signup');
   }
   res.status(201).json({ ok: true });
-});
+}));
 
 app.get('/api/admin/subscribers', requireAdmin, (req, res) => res.json({ subscribers: db.read('subscribers') }));
 
@@ -804,9 +825,8 @@ app.get('/blog/:slug', (req, res) => {
 // Admin API
 app.get('/api/admin/blog', requireAdmin, (req, res) => res.json({ posts: db.read('blog').sort(byNewest) }));
 
-app.post('/api/admin/blog', requireAdmin, upload.single('image'), (req, res) => {
+app.post('/api/admin/blog', requireAdmin, uploadImage, (req, res) => {
   try {
-    checkUploads(req.file ? [req.file] : []);
     const posts = db.read('blog');
     const fields = readPost(req.body);
     const now = new Date().toISOString();
@@ -822,14 +842,13 @@ app.post('/api/admin/blog', requireAdmin, upload.single('image'), (req, res) => 
     log(`Blog post created: ${post.slug}${post.published ? ' (published)' : ' (draft)'}`);
     res.status(201).json({ post });
   } catch (err) {
-    if (req.file) removeUpload(`/uploads/${req.file.filename}`);
+    if (req.file) removeUpload(req.file.url);
     throw err;
   }
 });
 
-app.put('/api/admin/blog/:id', requireAdmin, upload.single('image'), (req, res) => {
+app.put('/api/admin/blog/:id', requireAdmin, uploadImage, (req, res) => {
   try {
-    checkUploads(req.file ? [req.file] : []);
     const posts = db.read('blog');
     const i = posts.findIndex(p => p.id === req.params.id);
     if (i < 0) throw fail(404, 'Post not found');
@@ -848,19 +867,18 @@ app.put('/api/admin/blog/:id', requireAdmin, upload.single('image'), (req, res) 
     if (image !== old.image) removeUpload(old.image);
     res.json({ post: posts[i] });
   } catch (err) {
-    if (req.file) removeUpload(`/uploads/${req.file.filename}`);
+    if (req.file) removeUpload(req.file.url);
     throw err;
   }
 });
 
 // Photos inside a post's content: upload, then the editor inserts ![alt](url)
-app.post('/api/admin/blog/upload-image', requireAdmin, upload.single('image'), (req, res) => {
+app.post('/api/admin/blog/upload-image', requireAdmin, uploadImage, (req, res) => {
   try {
     if (!req.file) throw fail(400, 'Please choose an image');
-    checkUploads([req.file]);
-    res.status(201).json({ url: `/uploads/${req.file.filename}` });
+    res.status(201).json({ url: req.file.url });
   } catch (err) {
-    if (req.file) removeUpload(`/uploads/${req.file.filename}`);
+    if (req.file) removeUpload(req.file.url);
     throw err;
   }
 });
@@ -884,7 +902,7 @@ app.use((err, req, res, next) => {
   let message = err.message;
   if (err instanceof multer.MulterError) {
     status = 400;
-    message = err.code === 'LIMIT_FILE_SIZE' ? 'Image must be smaller than 5 MB' : err.message;
+    message = err.code === 'LIMIT_FILE_SIZE' ? `Image must be smaller than ${MAX_UPLOAD_MB} MB` : err.message;
   }
   if (status >= 500) {
     console.error(err);
@@ -893,7 +911,11 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-app.listen(PORT, () => {
-  console.log(`  Jpara Jewels store  -> http://localhost:${PORT}`);
-  console.log(`  Admin panel           -> http://localhost:${PORT}/admin`);
-});
+// Vercel imports the app; locally (and on a normal server) it listens on PORT
+module.exports = app;
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`  Jpara Jewels store  -> http://localhost:${PORT}`);
+    console.log(`  Admin panel           -> http://localhost:${PORT}/admin`);
+  });
+}
