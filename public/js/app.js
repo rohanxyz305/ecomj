@@ -1,6 +1,6 @@
 'use strict';
 /* ==========================================================
-   Glamora Jewels: storefront logic
+   Jpara Jewels: storefront logic
    ========================================================== */
 
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -89,13 +89,25 @@ function toast(message, type = 'ok') {
 
 /* ---------------- Modals / drawer ---------------- */
 
+let lastFocus = null;
 function open(el) {
+  if (!$('.modal.open, .drawer.open')) lastFocus = document.activeElement;
   el.classList.add('open');
   document.body.classList.add('locked');
+  // Move focus inside after the content has rendered
+  requestAnimationFrame(() => {
+    if (!el.contains(document.activeElement)) el.querySelector('.modal-card button, .drawer-panel button, input, a[href]')?.focus();
+  });
 }
 function close(el) {
+  if (!el) return;
   el.classList.remove('open');
-  if (!$('.modal.open, .drawer.open')) document.body.classList.remove('locked');
+  if (el.id === 'authModal') state.afterLogin = null;
+  if (!$('.modal.open, .drawer.open')) {
+    document.body.classList.remove('locked');
+    lastFocus?.focus?.();
+    lastFocus = null;
+  }
 }
 
 /* ---------------- Rendering ---------------- */
@@ -122,7 +134,7 @@ function renderAuth() {
   const initials = u.name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
   $('#authArea').innerHTML = `
     <div class="user-menu" id="userMenu">
-      <button class="user-chip" id="userChip" aria-haspopup="true">
+      <button class="user-chip" id="userChip" aria-haspopup="true" aria-expanded="false">
         <span class="avatar">${esc(initials)}</span><span class="user-name">Hi, ${esc(u.name.split(' ')[0])}</span>
       </button>
       <div class="user-dropdown">
@@ -217,7 +229,7 @@ function productCard(p) {
           ${p.offer ? `<span class="badge badge-offer">${p.offer.discount}% OFF</span>` : ''}
           ${p.badge ? `<span class="badge badge-${esc(p.badge)}">${esc(p.badge)}</span>` : ''}
         </div>
-        <button class="wish-btn ${wished ? 'on' : ''}" data-wish="${p.id}" aria-label="${wished ? 'Remove from' : 'Add to'} wishlist">${ICON.heart}</button>
+        <button class="wish-btn ${wished ? 'on' : ''}" data-wish="${p.id}" aria-label="Wishlist: ${esc(p.name)}" aria-pressed="${wished}">${ICON.heart}</button>
         ${p.inStock ? '' : '<div class="soldout"><span>Sold Out</span></div>'}
         <button class="quick-btn" data-view="${p.id}">Quick View</button>
       </div>
@@ -262,6 +274,15 @@ function renderAll() {
   renderCounts();
   const { freeShippingAbove } = state.config.shipping;
   $('#shipNote').textContent = `Free delivery on orders above ${rupee(freeShippingAbove)}. Cash on Delivery available.`;
+  // Footer contact column follows Admin > Pages > Store details
+  const b = state.config.business;
+  if (b) {
+    $('#footerContact').innerHTML = [
+      b.email && `<a href="mailto:${esc(b.email)}" style="display:inline">${esc(b.email)}</a>`,
+      b.phone && `<a href="tel:${esc(b.phone.replace(/[^\d+]/g, ''))}" style="display:inline">${esc(b.phone)}</a>`,
+      b.hours && esc(b.hours),
+    ].filter(Boolean).join('<br>');
+  }
   observeReveal();
 }
 
@@ -309,7 +330,7 @@ function toggleWish(id) {
   state.wish = had ? state.wish.filter(w => w !== id) : [...state.wish, id];
   saveWish();
   bump('#wishBtn');
-  $$(`[data-wish="${id}"]`).forEach(b => b.classList.toggle('on', !had));
+  $$(`.wish-btn[data-wish="${id}"]`).forEach(b => { b.classList.toggle('on', !had); b.setAttribute('aria-pressed', String(!had)); });
   if (!had) toast('💖 Saved to your wishlist');
   if ($('#drawer').classList.contains('open') && state.drawer === 'wish') renderDrawer();
 }
@@ -347,7 +368,7 @@ function renderDrawer() {
           <div class="price"><strong>${rupee(p.finalPrice)}</strong></div>
           ${p.inStock ? `<button class="btn btn-primary btn-sm" data-add="${p.id}">Add to Bag</button>` : '<span class="line-oos">Sold out</span>'}
         </div>
-        <button class="remove-btn" data-wish="${p.id}" aria-label="Remove">${ICON.trash}</button>
+        <button class="remove-btn" data-wish="${p.id}" aria-label="Remove ${esc(p.name)} from wishlist">${ICON.trash}</button>
       </div>`).join('')
       : '<div class="drawer-empty"><span class="empty-icon">💖</span><p>Your wishlist is empty.<br>Tap the heart on any piece to save it.</p></div>';
     foot.innerHTML = '';
@@ -359,7 +380,7 @@ function renderDrawer() {
     const t = cartTotals();
     body.innerHTML = `
       <form class="form" id="checkoutForm">
-        <p class="form-error" id="checkoutError" style="margin:0"></p>
+        <p class="form-error" id="checkoutError" role="alert" style="margin:0"></p>
         <label>Full name<input name="name" required value="${esc(state.user?.name || '')}" autocomplete="name"></label>
         <label>Mobile number<input name="phone" required inputmode="numeric" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit number" autocomplete="tel-national"></label>
         <label>Address<input name="line" required placeholder="House no., street, area" autocomplete="street-address"></label>
@@ -413,10 +434,10 @@ function renderDrawer() {
         <div>
           <h4>${esc(p.name)}</h4>
           <div class="price"><strong>${rupee(p.finalPrice)}</strong>${p.mrp > p.finalPrice ? `<s>${rupee(p.mrp)}</s>` : ''}</div>
-          ${p.inStock ? `<div class="qty"><button data-qty="-1" data-id="${p.id}" aria-label="Decrease">−</button><span>${qty}</span><button data-qty="1" data-id="${p.id}" aria-label="Increase">+</button></div>`
+          ${p.inStock ? `<div class="qty"><button data-qty="-1" data-id="${p.id}" aria-label="Decrease quantity of ${esc(p.name)}">−</button><span>${qty}</span><button data-qty="1" data-id="${p.id}" aria-label="Increase quantity of ${esc(p.name)}">+</button></div>`
             : '<span class="line-oos">Sold out. Please remove this item.</span>'}
         </div>
-        <button class="remove-btn" data-remove="${p.id}" aria-label="Remove">${ICON.trash}</button>
+        <button class="remove-btn" data-remove="${p.id}" aria-label="Remove ${esc(p.name)} from bag">${ICON.trash}</button>
       </div>`).join('')}`;
   const blocked = lines.some(l => !l.p.inStock);
   foot.innerHTML = `
@@ -436,14 +457,18 @@ async function placeOrder(form) {
     state.lastOrder = order;
     state.cart = [];
     saveCart();
-    await refreshProducts();
     state.drawer = 'done';
     renderDrawer();
+    refreshProducts().catch(() => {}); // best-effort: the order is already placed
   } catch (err) {
     $('#checkoutError').textContent = err.message;
     btn.disabled = false;
     btn.textContent = 'Place Order';
-    if (/sign in/i.test(err.message)) { state.user = null; renderAuth(); }
+    if (/sign in/i.test(err.message)) {
+      state.user = null;
+      renderAuth();
+      requireLogin(() => openDrawer('checkout'), 'Your session expired. Please sign in again to place your order');
+    }
   }
 }
 
@@ -482,10 +507,9 @@ async function submitAuth(form) {
     state.user = user;
     form.reset();
     renderAuth();
+    const next = state.afterLogin; // read before close(), which clears it
     close($('#authModal'));
-    toast(mode === 'signup' ? `🎉 Welcome to Glamora, ${user.name.split(' ')[0]}!` : `Welcome back, ${user.name.split(' ')[0]}! ✨`);
-    const next = state.afterLogin;
-    state.afterLogin = null;
+    toast(mode === 'signup' ? `🎉 Welcome to Jpara Jewels, ${user.name.split(' ')[0]}!` : `Welcome back, ${user.name.split(' ')[0]}! ✨`);
     if (next) next();
   } catch (err) {
     $('#authError').textContent = err.message;
@@ -556,7 +580,7 @@ function showProduct(id) {
           ${highlightsOf(p).map(h => `<li class="highlight-pill">${highlightIcon(h)}<span>${esc(h)}</span></li>`).join('')}
         </ul>
       </div>
-      <p>${esc(p.description || 'A beautiful piece from the Glamora collection.')}</p>
+      <p>${esc(p.description || 'A beautiful piece from the Jpara collection.')}</p>
       ${specs ? `
       <details class="specs">
         <summary>Specifications</summary>
@@ -569,7 +593,7 @@ function showProduct(id) {
       </ul>
       <div class="pv-actions">
         <button class="btn btn-primary btn-lg" data-add="${p.id}" ${p.inStock ? '' : 'disabled'}>${p.inStock ? 'Add to Bag' : 'Sold Out'}</button>
-        <button class="icon-btn wish-btn ${state.wish.includes(p.id) ? 'on' : ''}" style="position:static;width:50px;height:50px;border:1.5px solid var(--line)" data-wish="${p.id}" aria-label="Wishlist">${ICON.heart}</button>
+        <button class="icon-btn wish-btn ${state.wish.includes(p.id) ? 'on' : ''}" style="position:static;width:50px;height:50px;border:1.5px solid var(--line)" data-wish="${p.id}" aria-label="Wishlist: ${esc(p.name)}" aria-pressed="${state.wish.includes(p.id)}">${ICON.heart}</button>
       </div>
     </div>`;
   open($('#productModal'));
@@ -588,7 +612,7 @@ function setCategory(cat) {
 
 function bindEvents() {
   document.addEventListener('click', e => {
-    const t = e.target.closest('button, a, [data-view]');
+    const t = e.target.closest('button, a, [data-view], [data-close], [data-close-nav]');
     if (!t) {
       $('#userMenu')?.classList.remove('open');
       return;
@@ -643,7 +667,7 @@ function bindEvents() {
     if (d.action === 'checkout') {
       return requireLogin(() => openDrawer('checkout'), 'Sign in or create an account to place your order');
     }
-    if (t.id === 'userChip') return $('#userMenu').classList.toggle('open');
+    if (t.id === 'userChip') return t.setAttribute('aria-expanded', $('#userMenu').classList.toggle('open'));
 
     // Close mobile nav when a nav link is used
     if (t.closest('.nav') && t.tagName === 'A') document.body.classList.remove('nav-open');
@@ -654,6 +678,17 @@ function bindEvents() {
     if (e.key === 'Escape') {
       $$('.modal.open, .drawer.open').forEach(close);
       document.body.classList.remove('nav-open');
+      $('#userMenu')?.classList.remove('open');
+      $('#userChip')?.setAttribute('aria-expanded', 'false');
+    }
+    if (e.key === 'Tab') {
+      const box = $('.modal.open .modal-card, .drawer.open .drawer-panel');
+      const f = box ? $$('button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex="0"]', box).filter(x => x.offsetParent) : [];
+      if (f.length) {
+        if (!box.contains(document.activeElement)) { e.preventDefault(); f[0].focus(); }
+        else if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f.at(-1).focus(); }
+        else if (!e.shiftKey && document.activeElement === f.at(-1)) { e.preventDefault(); f[0].focus(); }
+      }
     }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.float-card')) {
       e.preventDefault();
@@ -664,7 +699,6 @@ function bindEvents() {
   $('#menuBtn').addEventListener('click', () => document.body.classList.add('nav-open'));
   $('#cartBtn').addEventListener('click', () => openDrawer('cart'));
   $('#wishBtn').addEventListener('click', () => openDrawer('wish'));
-  $('#footerOrders').addEventListener('click', e => { e.preventDefault(); showOrders(); });
   $('#searchBtn').addEventListener('click', () => {
     const bar = $('#searchBar');
     bar.classList.toggle('open');

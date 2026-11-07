@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Glamora Jewels | Artificial Jewellery That Sparkles</title>
+  <title>Jpara Jewels | Artificial Jewellery That Sparkles</title>
   <meta name="description" content="Shop kundan, oxidised, pearl and American diamond artificial jewellery. Necklaces, jhumkas, rings, bangles and bridal sets.">
   <meta name="theme-color" content="#3A2115">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8E%3C/text%3E%3C/svg%3E">
@@ -24,11 +24,11 @@
         <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
       </button>
 
-      <a href="#home" class="logo">Glamora<span class="logo-spark">✦</span><small>JEWELS</small></a>
+      <a href="#home" class="logo">Jpara<span class="logo-spark">✦</span><small>JEWELS</small></a>
 
       <nav class="nav" id="nav">
         <div class="nav-head">
-          <span class="logo">Glamora<span class="logo-spark">✦</span></span>
+          <span class="logo">Jpara<span class="logo-spark">✦</span></span>
           <button class="icon-btn" data-close-nav aria-label="Close menu"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <a href="#home">Home</a>
@@ -36,6 +36,7 @@
         <a href="#offers">Offers</a>
         <a href="#shop">Shop</a>
         <a href="#about">Why Us</a>
+        <a href="/blog">Blog</a>
         <div class="nav-auth" id="navAuth"></div>
       </nav>
 
@@ -139,7 +140,7 @@
     <section class="section section-tint" id="about">
       <div class="container">
         <div class="section-head reveal">
-          <span class="eyebrow">Why Glamora</span>
+          <span class="eyebrow">Why Jpara</span>
           <h2>Made to <em>shine</em>, made to last</h2>
         </div>
         <div class="feature-grid">
@@ -170,9 +171,25 @@
   </main>
 
   <footer class="footer">
+    <div class="container footer-newsletter">
+      <div class="newsletter-text">
+        <h4>Join the Jpara list</h4>
+        <p>New arrivals, festive offers and styling tips in your inbox. No spam.</p>
+      </div>
+      <form class="newsletter-form" novalidate>
+        <div class="newsletter-row">
+          <label class="sr-only" for="newsletterEmail">Email address</label>
+          <input id="newsletterEmail" type="email" name="email" required maxlength="200" placeholder="Your email address" autocomplete="email">
+          <input class="nl-hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <button class="btn btn-gold" type="submit">Subscribe</button>
+        </div>
+        <p class="newsletter-msg" role="status" aria-live="polite"></p>
+        <small class="newsletter-note">By subscribing you agree to our <a href="/privacy-policy">Privacy Policy</a>. You can unsubscribe at any time by contacting us.</small>
+      </form>
+    </div>
     <div class="container footer-grid">
       <div>
-        <span class="logo">Glamora<span class="logo-spark">✦</span></span>
+        <span class="logo">Jpara<span class="logo-spark">✦</span></span>
         <p>Artificial jewellery for every occasion: festive, bridal and everyday.</p>
       </div>
       <div>
@@ -183,17 +200,23 @@
         <a href="#shop" data-cat="Jewellery Sets">Bridal Sets</a>
       </div>
       <div>
+        <h4>Company</h4>
+        <a href="/about">About Us</a>
+        <a href="/contact">Contact Us</a>
+        <a href="/blog">Blog</a>
+      </div>
+      <div>
         <h4>Help</h4>
-        <a href="#about">Shipping</a>
-        <a href="#about">Jewellery Care</a>
-        <a href="#" id="footerOrders">My Orders</a>
+        <a href="/faq">FAQ</a>
+        <a href="/privacy-policy">Privacy Policy</a>
+        <a href="/terms-and-conditions">Terms &amp; Conditions</a>
       </div>
       <div>
         <h4>Contact</h4>
-        <p>hello@glamorajewels.example<br>+91 00000 00000<br>Mon–Sat, 10am–7pm</p>
+        <p id="footerContact">hello@jparajewels.example<br>+91 00000 00000<br>Mon–Sat, 10am–7pm</p>
       </div>
     </div>
-    <div class="container footer-bottom">© <span id="year"></span> Glamora Jewels. All rights reserved. · <a href="/credits" style="display:inline">Photo credits</a></div>
+    <div class="container footer-bottom">© <span id="year"></span> Jpara Jewels. All rights reserved. · <a href="/privacy-policy" style="display:inline">Privacy</a> · <a href="/terms-and-conditions" style="display:inline">Terms</a> · <a href="/credits" style="display:inline">Photo credits</a></div>
   </footer>
 
   <!-- Auth modal -->
@@ -202,14 +225,14 @@
     <div class="modal-card auth-card">
       <button class="icon-btn modal-x" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <div class="auth-hero">
-        <span class="logo">Glamora<span class="logo-spark">✦</span></span>
+        <span class="logo">Jpara<span class="logo-spark">✦</span></span>
         <p id="authTitle">Welcome! Sign in for faster checkout and to track your orders.</p>
       </div>
       <div class="tabs">
         <button class="tab active" data-tab="login">Sign In</button>
         <button class="tab" data-tab="signup">Sign Up</button>
       </div>
-      <p class="form-error" id="authError"></p>
+      <p class="form-error" id="authError" role="alert"></p>
       <form id="loginForm" class="form" data-form="login">
         <label>Email<input type="email" name="email" required autocomplete="email"></label>
         <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
@@ -227,23 +250,23 @@
   </div>
 
   <!-- Quick view modal -->
-  <div class="modal" id="productModal" role="dialog" aria-modal="true">
+  <div class="modal" id="productModal" role="dialog" aria-modal="true" aria-label="Product details">
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card product-card-lg" id="productModalBody"></div>
   </div>
 
   <!-- Orders modal -->
-  <div class="modal" id="ordersModal" role="dialog" aria-modal="true">
+  <div class="modal" id="ordersModal" role="dialog" aria-modal="true" aria-labelledby="ordersTitle">
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card orders-card">
       <button class="icon-btn modal-x" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-      <h3 class="modal-title">My Orders</h3>
+      <h3 class="modal-title" id="ordersTitle">My Orders</h3>
       <div id="ordersBody"></div>
     </div>
   </div>
 
   <!-- Bag / wishlist drawer -->
-  <aside class="drawer" id="drawer" aria-label="Shopping bag">
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
     <div class="modal-backdrop" data-close></div>
     <div class="drawer-panel">
       <div class="drawer-head">
@@ -255,9 +278,10 @@
     </div>
   </aside>
 
-  <div class="toasts" id="toasts"></div>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
   <script src="/js/art.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/newsletter.js" defer></script>
 </body>
 </html>

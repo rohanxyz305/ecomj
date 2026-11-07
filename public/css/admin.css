@@ -1,4 +1,4 @@
-/* Glamora Jewels: admin panel styles */
+/* Jpara Jewels: admin panel styles */
 :root {
   /* Brand palette */
   --espresso: #3A2115;      /* Espresso Brown */
@@ -7,7 +7,7 @@
 
   --espresso-deep: #2A170E;
   --mocha: #6B4530;
-  --gold-deep: #9C7642;
+  --gold-deep: #7E5C2E;
   --gold-light: #E4CFA8;
   --ink: #3A2115;
   --muted: #7A6455;
@@ -268,4 +268,51 @@ details .addr { font-size: .82rem; color: var(--muted); margin-top: 6px; }
   .topbar-actions > input, .topbar-actions > .btn:only-child, .topbar-actions > select:only-child { grid-column: 1 / -1; }
   .stats { grid-template-columns: 1fr 1fr; gap: 12px; }
   .stat strong { font-size: 1.4rem; }
+}
+
+.warn-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #FDECEA; color: #7A1F12; border: 1.5px solid #E8A598; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-weight: 500; }
+
+/* ---------- Blog editor ---------- */
+.modal-card.modal-wide { width: min(860px, 100%); }
+.post-thumb-empty { width: 52px; height: 52px; border-radius: 12px; background: var(--ivory); display: grid; place-items: center; font-size: 1.4rem; flex: none; }
+.warn-text { color: #8A6636; font-weight: 500; }
+.post-cover-picker { display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start; }
+.post-cover-preview { aspect-ratio: 1.91 / 1; border-radius: 14px; overflow: hidden; background: var(--ivory); display: grid; place-items: center; color: var(--muted); font-size: .8rem; }
+.post-cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.modal-body label small { font-weight: 400; }
+.slug-field { display: flex; align-items: center; border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.slug-field span { padding: 10px 0 10px 12px; color: var(--muted); font-weight: 400; }
+.slug-field input { border: 0 !important; box-shadow: none !important; padding-left: 2px; }
+.slug-field:focus-within { border-color: var(--gold-deep); }
+.char-count { font-weight: 500; color: var(--muted); }
+.char-count.ok { color: #3F6B3B; }
+.char-count.warn { color: #8A6636; }
+.char-count.bad { color: var(--danger); }
+.seo-box { background: var(--ivory); border-radius: 14px; padding: 12px 14px; }
+.seo-preview { background: #fff; border-radius: 10px; padding: 12px 14px; font-family: Arial, sans-serif; display: grid; gap: 3px; }
+.seo-url { font-size: .78rem; color: #4d5156; overflow-wrap: anywhere; }
+.seo-title { font-size: 1.12rem; color: #1a0dab; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seo-desc { font-size: .84rem; color: #4d5156; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.md-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.md-toolbar button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 10px; font-size: .8rem; color: var(--mocha); }
+.md-toolbar button:hover { background: var(--ivory); border-color: var(--gold-light); }
+#postContent { font-family: ui-monospace, Consolas, monospace; font-size: .86rem; line-height: 1.55; min-height: 260px; width: 100%; }
+@media (max-width: 640px) {
+  .post-cover-picker { grid-template-columns: 1fr; }
+}
+
+/* ---------- Pages editor ---------- */
+.pages-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 22px; align-items: start; }
+.pages-layout table { min-width: 460px; }
+.business-card { max-width: none; }
+.business-card .muted { margin: -6px 0 0; }
+.hint-box { background: #F3E6CC; color: #6B4A1E; border-radius: 10px; padding: 10px 12px; font-size: .8rem; margin: 0 0 8px; }
+.token-help { margin-top: 8px; display: grid; gap: 6px; }
+.token-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.token-list button { border: 1px dashed var(--gold-deep); background: var(--surface); color: var(--gold-deep); border-radius: 999px; padding: 3px 10px; font-size: .75rem; font-family: ui-monospace, Consolas, monospace; }
+.token-list button:hover { background: var(--ivory); }
+#pageContent { font-family: ui-monospace, Consolas, monospace; font-size: .86rem; line-height: 1.55; min-height: 300px; width: 100%; }
+.reset-btn { margin-right: auto; color: var(--danger); }
+@media (max-width: 1100px) {
+  .pages-layout { grid-template-columns: 1fr; }
 }

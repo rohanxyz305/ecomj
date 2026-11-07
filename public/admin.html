@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Glamora Admin</title>
+  <title>Jpara Admin</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8E%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,9 +16,9 @@
   <!-- Login -->
   <section class="login" id="loginView" hidden>
     <form class="login-card" id="loginForm">
-      <div class="brand">Glamora<span>✦</span></div>
+      <div class="brand">Jpara<span>✦</span></div>
       <p class="login-sub">Admin Panel</p>
-      <p class="error" id="loginError"></p>
+      <p class="error" id="loginError" role="alert"></p>
       <label>Username<input name="username" required autocomplete="username"></label>
       <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
       <button class="btn btn-primary btn-block" type="submit">Log In</button>
@@ -29,12 +29,15 @@
   <!-- App -->
   <div class="app" id="appView" hidden>
     <aside class="sidebar">
-      <div class="brand">Glamora<span>✦</span><small>Admin</small></div>
+      <div class="brand">Jpara<span>✦</span><small>Admin</small></div>
       <nav class="side-nav">
         <button data-view="dashboard" class="active"><span>📊</span>Dashboard</button>
         <button data-view="products"><span>💍</span>Products</button>
         <button data-view="offers"><span>🎉</span>Offers</button>
         <button data-view="homepage"><span>✨</span>Homepage</button>
+        <button data-view="blog"><span>📝</span>Blog</button>
+        <button data-view="pages"><span>📄</span>Pages</button>
+        <button data-view="newsletter"><span>📧</span>Newsletter</button>
         <button data-view="orders"><span>📦</span>Orders<i class="pill" id="pendingPill" hidden></i></button>
         <button data-view="settings"><span>⚙️</span>Settings</button>
       </nav>
@@ -52,17 +55,20 @@
         </div>
         <div class="topbar-actions" id="topActions"></div>
       </header>
+      <div class="warn-banner" id="pwWarning" role="alert" hidden>
+        ⚠️ You are still using the default admin password. Anyone could log in. <button class="btn btn-primary btn-sm" data-go="settings">Change it now</button>
+      </div>
       <div id="view"></div>
     </main>
   </div>
 
   <!-- Product form -->
-  <div class="modal" id="productModal">
+  <div class="modal" id="productModal" role="dialog" aria-modal="true" aria-labelledby="productFormTitle">
     <div class="backdrop" data-close></div>
     <form class="modal-card" id="productForm">
       <div class="modal-head"><h2 id="productFormTitle">Add Product</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
       <div class="modal-body">
-        <p class="error" id="productError"></p>
+        <p class="error" id="productError" role="alert"></p>
         <div class="img-picker">
           <div class="img-preview"><img id="imgPreview" alt=""></div>
           <div class="img-controls">
@@ -101,12 +107,12 @@
   </div>
 
   <!-- Offer form -->
-  <div class="modal" id="offerModal">
+  <div class="modal" id="offerModal" role="dialog" aria-modal="true" aria-labelledby="offerFormTitle">
     <div class="backdrop" data-close></div>
     <form class="modal-card" id="offerForm">
       <div class="modal-head"><h2 id="offerFormTitle">New Offer</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
       <div class="modal-body">
-        <p class="error" id="offerError"></p>
+        <p class="error" id="offerError" role="alert"></p>
         <div class="offer-preview" id="offerPreview"></div>
         <label>Offer title<input name="title" required maxlength="80" placeholder="e.g. Diwali Dhamaka"></label>
         <label>Subtitle<input name="subtitle" maxlength="160" placeholder="e.g. Flat discount on all earrings"></label>
@@ -126,8 +132,110 @@
     </form>
   </div>
 
+  <!-- Blog post form -->
+  <div class="modal" id="postModal" role="dialog" aria-modal="true" aria-labelledby="postFormTitle">
+    <div class="backdrop" data-close></div>
+    <form class="modal-card modal-wide" id="postForm">
+      <div class="modal-head"><h2 id="postFormTitle">New Blog Post</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
+      <div class="modal-body">
+        <p class="error" id="postError" role="alert"></p>
+        <div class="field-label">Cover image</div>
+        <div class="post-cover-picker">
+          <div class="post-cover-preview"><img id="postImgPreview" alt="" hidden><span id="postImgEmpty">No cover image</span></div>
+          <div class="img-controls">
+            <label class="btn btn-soft btn-sm file-btn">📷 Upload cover<input type="file" name="image" id="postImgFile" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
+            <input name="imageUrl" id="postImgUrl" placeholder="…or paste an image URL (https://)">
+            <button type="button" class="link-btn" id="postImgRemove">Remove image</button>
+            <small>Wide photos (about 1200 × 630) look best. Also used when the post is shared on WhatsApp or Facebook.</small>
+          </div>
+        </div>
+        <label>Title <small class="muted" id="titleCount">0 / 120</small><input name="title" required maxlength="120" placeholder="e.g. 5 Ways to Style Kundan Jewellery This Diwali"></label>
+        <label>URL <small class="muted">(created from the title, you can change it)</small>
+          <div class="slug-field"><span>/blog/</span><input name="slug" id="postSlug" maxlength="80" placeholder="your-post-title"></div>
+        </label>
+        <label>Meta description <small id="metaCount" class="char-count">0 / 160</small>
+          <textarea name="metaDescription" rows="2" maxlength="160" placeholder="One or two sentences that sum up the post. Shown in Google search results."></textarea>
+          <small class="muted" id="metaHint"></small>
+        </label>
+        <div class="seo-box">
+          <div class="field-label">Google preview</div>
+          <div class="seo-preview" id="seoPreview"></div>
+        </div>
+        <div>
+          <div class="field-label">Content</div>
+          <div class="md-toolbar" role="toolbar" aria-label="Formatting" data-target="postContent">
+            <button type="button" data-md="h2" title="Heading">H2</button>
+            <button type="button" data-md="h3" title="Sub-heading">H3</button>
+            <button type="button" data-md="bold" title="Bold"><b>B</b></button>
+            <button type="button" data-md="italic" title="Italic"><i>I</i></button>
+            <button type="button" data-md="ul" title="Bullet list">• List</button>
+            <button type="button" data-md="quote" title="Quote">❝ Quote</button>
+            <button type="button" data-md="link" title="Link">🔗 Link</button>
+            <button type="button" data-md="image" title="Insert image">🖼️ Image</button>
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" hidden>
+          </div>
+          <textarea name="content" id="postContent" rows="14" required maxlength="50000" placeholder="Write your post here.&#10;&#10;Leave an empty line between paragraphs.&#10;## Heading&#10;- list item&#10;**bold**  *italic*  [link](https://…)"></textarea>
+          <small class="muted">Empty line = new paragraph · ## Heading · - List · **bold** · *italic* · [text](https://link) · use 🖼️ Image to add photos inside the post.</small>
+        </div>
+        <label class="toggle"><input type="checkbox" name="published"><span class="sw"></span>Published (visible on the blog)</label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+        <button type="submit" class="btn btn-primary" id="postSave">Save Post</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Page form (About, Contact, Privacy, Terms, FAQ) -->
+  <div class="modal" id="pageModal" role="dialog" aria-modal="true" aria-labelledby="pageFormTitle">
+    <div class="backdrop" data-close></div>
+    <form class="modal-card modal-wide" id="pageForm">
+      <div class="modal-head"><h2 id="pageFormTitle">Edit Page</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
+      <div class="modal-body">
+        <p class="error" id="pageError" role="alert"></p>
+        <div class="grid-2">
+          <label>Small text above heading<input name="eyebrow" maxlength="60" placeholder="Leave empty to hide"></label>
+          <label>Heading <small class="muted">(*word* = gold italics)</small><input name="heading" maxlength="100" required></label>
+        </div>
+        <label>Browser &amp; Google title<input name="title" maxlength="70" required></label>
+        <label>Meta description <small id="pageMetaCount" class="char-count">0 / 160</small>
+          <textarea name="metaDescription" rows="2" maxlength="160" placeholder="One or two sentences shown in Google search results."></textarea>
+        </label>
+        <div class="seo-box">
+          <div class="field-label">Google preview</div>
+          <div class="seo-preview" id="pageSeoPreview"></div>
+        </div>
+        <div>
+          <div class="field-label">Content</div>
+          <div class="md-toolbar" role="toolbar" aria-label="Formatting" data-target="pageContent">
+            <button type="button" data-md="h2" title="Heading">H2</button>
+            <button type="button" data-md="h3" title="Sub-heading">H3</button>
+            <button type="button" data-md="bold" title="Bold"><b>B</b></button>
+            <button type="button" data-md="italic" title="Italic"><i>I</i></button>
+            <button type="button" data-md="ul" title="Bullet list">• List</button>
+            <button type="button" data-md="quote" title="Quote">❝ Quote</button>
+            <button type="button" data-md="link" title="Link">🔗 Link</button>
+            <button type="button" data-md="image" title="Insert image">🖼️ Image</button>
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" hidden>
+          </div>
+          <p class="hint-box" id="pageFaqHint" hidden>On the FAQ page, <strong>## Group name</strong> starts a section and each <strong>### Question</strong> becomes an item that opens when clicked. The lines under a question are its answer.</p>
+          <textarea name="content" id="pageContent" rows="16" required maxlength="50000"></textarea>
+          <div class="token-help">
+            <small class="muted">Placeholders, filled in from Store details (click to insert):</small>
+            <div class="token-list" id="pageTokens"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost reset-btn" id="pageReset">↺ Reset to default</button>
+        <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+        <button type="submit" class="btn btn-primary" id="pageSave">Save Page</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Confirm -->
-  <div class="modal" id="confirmModal">
+  <div class="modal" id="confirmModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
     <div class="backdrop" data-close></div>
     <div class="modal-card confirm-card">
       <div class="confirm-icon">🗑️</div>
@@ -140,7 +248,7 @@
     </div>
   </div>
 
-  <div class="toasts" id="toasts"></div>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
   <script src="/js/art.js"></script>
   <script src="/js/admin.js"></script>

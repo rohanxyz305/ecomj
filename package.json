@@ -1,8 +1,8 @@
 {
-  "name": "glamora-jewels",
+  "name": "jpara-jewels",
   "version": "1.0.0",
   "private": true,
-  "description": "Artificial jewellery store with customer accounts and an admin panel",
+  "description": "Jpara Jewels: artificial jewellery store with customer accounts and an admin panel",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

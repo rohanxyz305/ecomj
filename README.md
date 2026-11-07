@@ -1,4 +1,4 @@
-# Glamora Jewels: Artificial Jewellery Store
+# Jpara Jewels: Artificial Jewellery Store
 
 A responsive jewellery storefront with customer accounts, a bag with checkout (Cash on Delivery), and a separate admin panel.
 
@@ -12,8 +12,9 @@ npm start
 - Store: http://localhost:3000
 - Admin: http://localhost:3000/admin
 
-**Default admin login:** `admin` / `admin@123`. Change it in **Admin → Settings** right after your first login.
-You can also set your own before the first run: `ADMIN_USER=you ADMIN_PASSWORD=secret npm start`.
+**Admin login:** on the very first run the server creates the admin account and prints a random password once in the terminal (username `admin`). Note it down and change it in **Admin → Settings**.
+Or set your own before the first run: `ADMIN_USER=you ADMIN_PASSWORD=secret npm start`.
+Installs created before this change used `admin` / `admin@123`; the server and admin panel warn until that password is changed.
 
 ## Features
 
@@ -56,6 +57,8 @@ public/js/art.js   Illustrations shown for products without a photo
 
 - Host on any Node.js host (Render, Railway, a VPS, etc.) that has a **persistent disk** for `data/` and `public/uploads/`.
 - Set `NODE_ENV=production` (secure cookies over HTTPS), and set `APP_SECRET` to a long random string.
+- Run it as a **single process** (no cluster/pm2 `-i`): data is stored in JSON files and the login rate limits live in memory.
+- Optional: `ALLOWED_ORIGINS` (comma-separated) if the API is called from another domain, `TRUST_PROXY` if your proxy is not on the same machine, `COOKIE_SECURE=1` to force secure cookies.
 - Update the contact details in the footer of `public/index.html`.
 - Payments are Cash on Delivery only. Online payment (e.g. Razorpay) can be added to the checkout later.
 
