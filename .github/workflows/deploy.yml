@@ -127,8 +127,15 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          # Keys copied on Windows carry \r line endings, which OpenSSH rejects ("error in libcrypto")
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sed '/^$/d' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null; then
+            echo "::error::SSH_PRIVATE_KEY is not a valid private key. Copy the whole file incl. the BEGIN/END lines."
+            exit 1
+          fi
+          # Fingerprint only (not secret): compare with the key in the server's authorized_keys
+          ssh-keygen -lf ~/.ssh/deploy_key
           ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
       # Packs the code into one tar stream (no rsync needed on the server). Nothing on the server is deleted,
       # and the server's data/ and public/uploads/ (store data, uploaded photos) are never sent or overwritten.
