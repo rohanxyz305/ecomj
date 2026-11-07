@@ -43,10 +43,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Passenger (cPanel "Setup Node.js App") restarts the app when this file changes
+      # Hosts without an "npm install" button (e.g. OLS Panel / OpenLiteSpeed): set the repo variable
+      # FTP_UPLOAD_NODE_MODULES=true and the libraries are installed here and uploaded with the code.
+      # Leave it unset on cPanel/CloudLinux, where node_modules must be created by "Run NPM Install".
+      - uses: actions/setup-node@v4
+        if: vars.FTP_UPLOAD_NODE_MODULES == 'true'
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install production packages to upload
+        if: vars.FTP_UPLOAD_NODE_MODULES == 'true'
+        run: npm ci --omit=dev --no-audit --no-fund
+      # Passenger / LiteSpeed restart the app when this file changes
       - name: Mark the app for restart
         run: mkdir -p tmp && date -u > tmp/restart.txt
-      - name: Upload changed files
+      - name: Upload changed files (with node_modules)
+        if: vars.FTP_UPLOAD_NODE_MODULES == 'true'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -59,6 +71,24 @@ jobs:
             **/.git*
             **/.git*/**
             .github/**
+            .claude/**
+            data/**
+            public/uploads/**
+      - name: Upload changed files
+        if: vars.FTP_UPLOAD_NODE_MODULES != 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          port: ${{ vars.FTP_PORT || 21 }}
+          server-dir: ${{ vars.APP_DIR }}/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            .claude/**
             **/node_modules/**
             data/**
             public/uploads/**
@@ -94,7 +124,7 @@ jobs:
       - name: Upload files
         run: |
           rsync -rlz --chmod=D755,F644 -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT" \
-            --exclude '.git/' --exclude '.github/' --exclude 'node_modules' \
+            --exclude '.git/' --exclude '.github/' --exclude '.claude/' --exclude 'node_modules' \
             --exclude 'data/' --exclude 'public/uploads/' --exclude 'tmp/' \
             ./ "$SSH_USER@$SSH_HOST:$APP_DIR/"
       - name: Install packages and restart the app

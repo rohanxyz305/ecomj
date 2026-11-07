@@ -72,12 +72,13 @@ Set these in GitHub → repo **Settings → Secrets and variables → Actions**:
 | Name | Kind | FTP | SSH | Example |
 |---|---|---|---|---|
 | `DEPLOY_METHOD` | Variable | `ftp` | `ssh` | `ftp` |
-| `APP_DIR` | Variable | ✔ | ✔ | `glamora-jewels` (the Node.js app root, relative to your home folder) |
+| `APP_DIR` | Variable | ✔ | ✔ | `jpara-jewels` (the Node.js app root, relative to your home / FTP folder) |
 | `SITE_URL` | Variable | optional | optional | `https://yourdomain.com` (checked after each deploy) |
 | `FTP_SERVER` | Secret | ✔ | | `ftp.yourdomain.com` |
 | `FTP_USERNAME` | Secret | ✔ | | your cPanel FTP user |
 | `FTP_PASSWORD` | Secret | ✔ | | |
 | `FTP_PROTOCOL` / `FTP_PORT` | Variable | optional | | default `ftps` / `21` |
+| `FTP_UPLOAD_NODE_MODULES` | Variable | optional | | `true` on hosts with no "Run NPM Install" button (e.g. OLS Panel / OpenLiteSpeed): libraries are installed by GitHub and uploaded. Leave unset on cPanel |
 | `SSH_HOST` | Secret | | ✔ | `yourdomain.com` or the server IP |
 | `SSH_USER` | Secret | | ✔ | your cPanel username |
 | `SSH_PRIVATE_KEY` | Secret | | ✔ | private key whose public key is authorised in cPanel → SSH Access |
