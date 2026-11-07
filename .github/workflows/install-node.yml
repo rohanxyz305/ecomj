@@ -1,0 +1,78 @@
+# Installs Node.js for the hosting user (no root needed) into ~/nodejs, from the official nodejs.org
+# downloads, verified against nodejs.org's SHASUMS256.txt. Run manually: Actions -> "Install Node.js" -> Run.
+# Afterwards point the panel's Node.js binary path to ~/nodejs/current/bin/node.
+name: Install Node.js
+
+on:
+  workflow_dispatch:
+    inputs:
+      major:
+        description: Node.js major version (LTS)
+        default: "24"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  install-node:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ vars.SSH_PORT || 22 }}
+      APP_DIR: ${{ vars.APP_DIR }}
+      NODE_MAJOR: ${{ inputs.major }}
+    steps:
+      - name: Set up the SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' | sed '/^[[:space:]]*$/d' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Install Node.js in the user's home folder
+        run: |
+          case "$NODE_MAJOR" in ''|*[!0-9]*) echo "::error::major must be a number"; exit 1;; esac
+          ssh -o BatchMode=yes -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            NODE_MAJOR="$NODE_MAJOR" APP_DIR="$APP_DIR" bash -s <<'EOF'
+          set -euo pipefail
+          case "$(uname -m)" in
+            x86_64) ARCH=x64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+            *) echo "Unsupported CPU: $(uname -m)"; exit 1 ;;
+          esac
+          if command -v curl >/dev/null; then GET="curl -fsSL"; GETO="curl -fsSL -o"; else GET="wget -qO-"; GETO="wget -qO"; fi
+          BASE="https://nodejs.org/dist/latest-v${NODE_MAJOR}.x"
+          SUMS="$($GET "$BASE/SHASUMS256.txt")"
+          FILE="$(printf '%s\n' "$SUMS" | awk '{print $2}' | grep -E "^node-v[0-9.]+-linux-${ARCH}\.tar\.xz$" | head -1)"
+          [ -n "$FILE" ] || { echo "Could not find a Linux ${ARCH} build for Node ${NODE_MAJOR}"; exit 1; }
+          VERSION="${FILE#node-}"; VERSION="${VERSION%%-linux*}"
+          mkdir -p "$HOME/nodejs"
+          TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+          echo "Downloading $FILE"
+          $GETO "$TMP/$FILE" "$BASE/$FILE"
+          ( cd "$TMP" && printf '%s\n' "$SUMS" | grep " $FILE\$" | sha256sum -c - )
+          rm -rf "$HOME/nodejs/$VERSION"
+          mkdir -p "$HOME/nodejs/$VERSION"
+          tar -xJf "$TMP/$FILE" -C "$HOME/nodejs/$VERSION" --strip-components=1
+          ln -sfn "$HOME/nodejs/$VERSION" "$HOME/nodejs/current"
+          # The web server may run the app as another user: allow it to read and run Node (not to write)
+          chmod -R go+rX "$HOME/nodejs"
+          NODE="$HOME/nodejs/current/bin/node"
+          echo "== Installed: $("$NODE" -v) at $NODE"
+          # Make node/npm available in SSH sessions for this user
+          grep -q 'nodejs/current/bin' "$HOME/.bashrc" 2>/dev/null || echo 'export PATH="$HOME/nodejs/current/bin:$PATH"' >> "$HOME/.bashrc"
+          echo "== Test start of the store on port 3999 (from a throwaway copy, so the real data/ is never created or changed)"
+          mkdir -p "$TMP/app"
+          cp -r "$HOME/$APP_DIR/server.js" "$HOME/$APP_DIR/lib" "$HOME/$APP_DIR/public" "$HOME/$APP_DIR/package.json" "$TMP/app/"
+          ln -s "$HOME/$APP_DIR/node_modules" "$TMP/app/node_modules"
+          cd "$TMP/app"
+          (PORT=3999 ADMIN_PASSWORD=throwaway-test-only timeout 10 "$NODE" server.js > "$TMP/app.log" 2>&1 &)
+          sleep 5
+          code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3999/api/config || true)"
+          echo "local /api/config -> ${code:-no answer}"
+          grep -vi password "$TMP/app.log" | head -10 || true
+          echo "== Node binary path for the panel: $NODE"
+          EOF

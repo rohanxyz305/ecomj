@@ -35,10 +35,15 @@ jobs:
           echo "== node_modules"; [ -d node_modules/express ] && echo "express present" || echo "express MISSING"
           echo "== data folder (names only)"; ls data 2>/dev/null || echo "(none)"
           echo "== test start on port 3999"
-          if command -v node >/dev/null; then
-            (PORT=3999 timeout 8 node server.js > /tmp/jp-check.log 2>&1 &) ; sleep 4
+          NODE="$(command -v node || true)"; [ -z "$NODE" ] && [ -x "$HOME/nodejs/current/bin/node" ] && NODE="$HOME/nodejs/current/bin/node"
+          if [ -n "$NODE" ]; then
+            echo "using $NODE ($("$NODE" -v))"
+            # Throwaway copy, so the real data/ folder (admin account, orders) is never created or changed
+            T="$(mktemp -d)"; mkdir -p "$T/app"
+            cp -r server.js lib public package.json "$T/app/"; ln -s "$PWD/node_modules" "$T/app/node_modules"
+            (cd "$T/app" && PORT=3999 ADMIN_PASSWORD=throwaway-test-only timeout 8 "$NODE" server.js > "$T/app.log" 2>&1 &) ; sleep 4
             curl -s -o /dev/null -w "local /api/config -> %{http_code}\n" http://127.0.0.1:3999/api/config || echo "curl failed"
-            echo "-- app output (no secrets printed):"; grep -v -i "password" /tmp/jp-check.log | head -15; rm -f /tmp/jp-check.log
+            echo "-- app output (no secrets printed):"; grep -v -i "password" "$T/app.log" | head -15; rm -rf "$T"
           fi
           echo "== public_html"; ls -la "$HOME/public_html" 2>/dev/null | head -10
           echo "== LiteSpeed vhost config mentioning jpara (read-only, if readable)"
