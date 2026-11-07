@@ -1,0 +1,46 @@
+# Manual diagnostics for the hosting server (Actions tab -> "Server check" -> Run workflow).
+# Read-only apart from a short test start of the app on a spare local port; never touches data/.
+name: Server check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  server-check:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ vars.SSH_PORT || 22 }}
+      APP_DIR: ${{ vars.APP_DIR }}
+    steps:
+      - name: Set up the SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' | sed '/^[[:space:]]*$/d' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Inspect the server
+        run: |
+          ssh -o BatchMode=yes -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s <<'EOF'
+          echo "== whoami / home"; whoami; echo "$HOME"
+          echo "== node / npm on PATH"; command -v node && node -v || echo "node: NOT on PATH"; command -v npm && npm -v || echo "npm: NOT on PATH"
+          echo "== other node installs"; ls -d /usr/local/lsws/fcgi-bin/lsnode* /usr/bin/node /usr/local/bin/node /opt/*/bin/node 2>/dev/null || true
+          echo "== app folder"; cd "$HOME/jpara-jewels" 2>/dev/null && pwd && ls -la | head -30 || echo "app folder missing"
+          echo "== node_modules"; [ -d node_modules/express ] && echo "express present" || echo "express MISSING"
+          echo "== data folder (names only)"; ls data 2>/dev/null || echo "(none)"
+          echo "== test start on port 3999"
+          if command -v node >/dev/null; then
+            (PORT=3999 timeout 8 node server.js > /tmp/jp-check.log 2>&1 &) ; sleep 4
+            curl -s -o /dev/null -w "local /api/config -> %{http_code}\n" http://127.0.0.1:3999/api/config || echo "curl failed"
+            echo "-- app output (no secrets printed):"; grep -v -i "password" /tmp/jp-check.log | head -15; rm -f /tmp/jp-check.log
+          fi
+          echo "== public_html"; ls -la "$HOME/public_html" 2>/dev/null | head -10
+          echo "== LiteSpeed vhost config mentioning jpara (read-only, if readable)"
+          grep -rl "jpara" /usr/local/lsws/conf/vhosts 2>/dev/null | head -5 || true
+          EOF
