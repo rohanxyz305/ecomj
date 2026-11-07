@@ -110,8 +110,18 @@ jobs:
       SSH_PORT: ${{ vars.SSH_PORT || 22 }}
       APP_DIR: ${{ vars.APP_DIR }}
       NODE_VENV_ACTIVATE: ${{ vars.NODE_VENV_ACTIVATE }}
+      # UPLOAD_NODE_MODULES=true: install packages here and upload them (hosts without npm, e.g. OLS Panel)
+      UPLOAD_NODE_MODULES: ${{ vars.UPLOAD_NODE_MODULES || vars.FTP_UPLOAD_NODE_MODULES }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        if: env.UPLOAD_NODE_MODULES == 'true'
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install production packages to upload
+        if: env.UPLOAD_NODE_MODULES == 'true'
+        run: npm ci --omit=dev --no-audit --no-fund
       - name: Set up the SSH key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -120,21 +130,28 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
-      # No --delete: files the host creates in the app folder (logs, node_modules link) are left alone
+      # Packs the code into one tar stream (no rsync needed on the server). Nothing on the server is deleted,
+      # and the server's data/ and public/uploads/ (store data, uploaded photos) are never sent or overwritten.
       - name: Upload files
         run: |
-          rsync -rlz --chmod=D755,F644 -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT" \
-            --exclude '.git/' --exclude '.github/' --exclude '.claude/' --exclude 'node_modules' \
-            --exclude 'data/' --exclude 'public/uploads/' --exclude 'tmp/' \
-            ./ "$SSH_USER@$SSH_HOST:$APP_DIR/"
-      - name: Install packages and restart the app
+          EXTRA_EXCLUDE=""
+          if [ "$UPLOAD_NODE_MODULES" != "true" ]; then EXTRA_EXCLUDE="--exclude=./node_modules"; fi
+          tar -czf - --exclude=./.git --exclude=./.github --exclude=./.claude \
+            --exclude=./data --exclude=./public/uploads --exclude=./tmp $EXTRA_EXCLUDE . \
+          | ssh -o BatchMode=yes -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+              "mkdir -p '$APP_DIR' && tar -xzf - -C '$APP_DIR' --no-same-owner"
+      - name: Install packages (if needed) and restart the app
         run: |
-          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s <<EOF
+          ssh -o BatchMode=yes -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s <<EOF
           set -e
           cd "$APP_DIR"
-          if [ -n "$NODE_VENV_ACTIVATE" ]; then source "$NODE_VENV_ACTIVATE"; fi
-          npm install --omit=dev --no-audit --no-fund
-          mkdir -p tmp && touch tmp/restart.txt
+          mkdir -p data public/uploads
+          if [ "$UPLOAD_NODE_MODULES" != "true" ]; then
+            if [ -n "$NODE_VENV_ACTIVATE" ]; then source "$NODE_VENV_ACTIVATE"; fi
+            npm install --omit=dev --no-audit --no-fund
+          fi
+          mkdir -p tmp && date -u > tmp/restart.txt
+          echo "Deployed to \$(pwd)"
           EOF
       - name: Check the live site
         if: vars.SITE_URL != ''
