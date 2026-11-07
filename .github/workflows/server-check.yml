@@ -46,6 +46,18 @@ jobs:
             echo "-- app output (no secrets printed):"; grep -v -i "password" "$T/app.log" | head -15; rm -rf "$T"
           fi
           echo "== public_html"; ls -la "$HOME/public_html" 2>/dev/null | head -10
-          echo "== LiteSpeed vhost config mentioning jpara (read-only, if readable)"
-          grep -rl "jpara" /usr/local/lsws/conf/vhosts 2>/dev/null | head -5 || true
+          echo "== public_html/.htaccess"; [ -f "$HOME/public_html/.htaccess" ] && cat "$HOME/public_html/.htaccess" || echo "(none)"
+          echo "== node / lsnode processes for this user"; ps -u "$(whoami)" -o pid,etime,args 2>/dev/null | grep -iE "node|lsnode" | grep -v grep || echo "(none running)"
+          echo "== LiteSpeed config folders (names/permissions only)"
+          ls -ld /usr/local/lsws/conf /usr/local/lsws/conf/vhosts 2>&1 | head -3
+          ls /usr/local/lsws/conf/vhosts 2>&1 | head -20
+          echo "== vhost config files mentioning jpara (if readable)"
+          for f in $(grep -rl "jpara" /usr/local/lsws/conf 2>/dev/null | head -5); do
+            echo "--- $f"; grep -nE "docRoot|vhRoot|context|type|location|binPath|appType|startupFile|uri|vhDomain|vhAliases|enable" "$f" | grep -viE "pass|secret|key" | head -40
+          done
+          echo "== LiteSpeed error log lines about node / jpara (if readable)"
+          for log in /usr/local/lsws/logs/error.log "$HOME/logs/error.log" "$HOME/logs/"*error*; do
+            [ -r "$log" ] && { echo "--- $log"; grep -iE "jpara|lsnode|node|server.js|context" "$log" | tail -15; }
+          done 2>/dev/null
+          ls -la "$HOME/logs" 2>/dev/null | head -10 || true
           EOF
